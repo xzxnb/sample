@@ -7,6 +7,7 @@ import os
 import logzero
 import logging
 import pickle
+import pandas as pd
 
 from tqdm import tqdm
 from logzero import logger
@@ -472,7 +473,6 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-
 if __name__ == '__main__':
     args = parse_args()
     if not os.path.exists(args.output_dir):
@@ -489,17 +489,159 @@ if __name__ == '__main__':
     context = WFOMSContext(problem)
     logger.info('Parse input: %ss', t)
 
-    with Timer() as total_t:
-        with Timer() as t:
-            sampler = Sampler(context)
-        logger.info('elapsed time for initializing sampler: %s', t.elapsed)
-        samples = sampler.sample(args.n_samples)
-        logger.info('total time for sampling: %s', total_t.elapsed)
-    save_file = os.path.join(args.output_dir, 'samples.pkl')
-    with open(save_file, 'wb') as f:
-        pickle.dump(samples, f)
-    logger.info('Samples are saved in %s', save_file)
-    if args.show_samples:
-        logger.info('Samples:')
-        for s in samples:
-            logger.info(sorted(str(i) for i in s))
+    # data_list = ['data1/k_color1_domain10.xlsx', 'data1/k_color1_domain15.xlsx', 'data1/k_color1_domain20.xlsx']
+    # 注意根据文件修改循环中d和文件命名
+    data_list = ['data1/color1_domain20_max1.xlsx']
+    num = {
+            'domain': [],
+            'tv': [],
+            'real_tv': [],
+            'weight': [],
+            'loc': []
+        }
+    nums = pd.DataFrame(num)
+    # 注意需要初始化mln或wfomcs文件的domain和权重为0
+    last_weight = '0'
+    last_domain = '0'
+    for d in range(1):
+        file_path = data_list[d]
+        df = pd.read_excel(file_path)
+        for tv in np.arange(0, 1.1, 0.1):
+            stv = str(tv)
+            print(str(tv))
+            target_value = tv
+            closest_row = (df.iloc[:, 2] - target_value).abs().idxmin()
+            weight1 = df.iloc[closest_row, 0]
+            weight2 = df.iloc[closest_row, 1]
+            weight = [weight1, weight2]
+            for i in range(2):
+                with open(args.input, 'r', encoding='utf-8') as file:
+                    lines = file.readlines()
+                lines[6] = lines[6].replace(last_weight, str(weight[i]), 1)
+                lines[5] = lines[5].replace(last_domain, str(20 + d * 5), 1)
+                with open(args.input, 'w', encoding='utf-8') as file:
+                    file.writelines(lines)
+                last_weight = str(weight[i])
+                last_domain = str(20+d*5)
+
+                with open(args.input, 'r', encoding='utf-8') as file:
+                    lines = file.readlines()
+                    print(lines[6])
+                    print(lines[5])
+                with Timer() as t:
+                    problem = parse_input(args.input)
+                context = WFOMSContext(problem)
+                logger.info('Parse input: %ss', t)
+
+                with Timer() as total_t:
+                    with Timer() as t:
+                        sampler = Sampler(context)
+                    logger.info('elapsed time for initializing sampler: %s', t.elapsed)
+                    samples = sampler.sample(args.n_samples)
+                    logger.info('total time for sampling: %s', total_t.elapsed)
+                nums.loc[len(nums)] = [int(lines[5].strip().split()[-1]), tv, df.iloc[closest_row, 2], float(lines[6].strip().split()[0]), closest_row]
+                save_file = os.path.join(args.output_dir, 'color1_'+'domain'+str(20+d*5)+'_tv'+str(tv)+'_'+str(i)+'.pkl')
+                ss = []
+                with open(save_file, 'wb') as f:
+                    pickle.dump(samples, f)
+                logger.info('Samples are saved in %s', save_file)
+                if args.show_samples:
+                    logger.info('Samples:')
+                    for s in samples:
+                        logger.info(sorted(str(i) for i in s))
+                print('d: ', d, 'TV  ', tv, lines[6])
+    excel_file_path = 'outputs/color1/num100k_mln/domain20_max1/color1_domain20_max1.xlsx'  # 指定输出文件路径
+    nums.to_excel(excel_file_path, index=False)  # index=False 表示不写入行索引
+
+# if __name__ == '__main__':
+#     args = parse_args()
+#     if not os.path.exists(args.output_dir):
+#         os.makedirs(args.output_dir)
+#     if args.debug:
+#         logzero.loglevel(logging.DEBUG)
+#         args.show_samples = True
+#     else:
+#         logzero.loglevel(logging.INFO)
+#     logzero.logfile('{}/log.txt'.format(args.output_dir), mode='w')
+#
+#     with Timer() as t:
+#         problem = parse_input(args.input)
+#     context = WFOMSContext(problem)
+#     logger.info('Parse input: %ss', t)
+#
+#     data_list = ['data3/k_color3_domain10.xlsx']
+#     last_weight = '0'
+#     last_domain = '0'
+#     num = {
+#         'domain': [],
+#         'tv': [],
+#         'm': [],
+#         'loc': []
+#     }
+#     nums = pd.DataFrame(num)
+#     for d in range(1):
+#         file_path = data_list[d]
+#         df = pd.read_excel(file_path)
+#         for tv in np.arange(0, 1.1, 0.1):
+#             target_value = tv
+#             closest_row = (df.iloc[:, 2] - target_value).abs().idxmin()
+#             weight1 = df.iloc[closest_row, 0]
+#             weight2 = df.iloc[closest_row, 1]
+#             weight = [weight1, weight2]
+#             for i in range(2):
+#                 with open(args.input, 'r', encoding='utf-8') as file:
+#                     lines = file.readlines()
+#                 lines[9] = lines[9].replace(last_weight, str(weight[i]), 1)
+#                 lines[10] = lines[10].replace(last_weight, str(weight[i]), 1)
+#                 lines[11] = lines[11].replace(last_weight, str(weight[i]), 1)
+#
+#                 lines[8] = lines[8].replace(last_domain, str(10+d*5), 1)
+#                 # lines[2] = lines[2].replace(last_weight, str(weight[i]), 1)
+#                 # lines[5] = lines[5].replace(last_domain, str(10 + d * 5), 1)
+#                 with open(args.input, 'w', encoding='utf-8') as file:
+#                     file.writelines(lines)
+#                 last_weight = str(weight[i])
+#                 last_domain = str(10+d*5)
+#                 # with Timer() as t:
+#                 #     problem = parse_input(args.input)
+#                 # context = WFOMSContext(problem)
+#                 # logger.info('Parse input: %ss', t)
+#
+#                 # with Timer() as total_t:
+#                 #     with Timer() as t:
+#                 #         sampler = Sampler(context)
+#                 #     logger.info('elapsed time for initializing sampler: %s', t.elapsed)
+#                 #     samples = sampler.sample(args.n_samples)
+#                 #     logger.info('total time for sampling: %s', total_t.elapsed)
+#                 nums.loc[len(nums)] = [lines[8][-3:], tv, lines[9][-3:], closest_row]
+#                 # save_file = os.path.join(args.output_dir, 'color3_'+'domain'+str(10+d*5)+'_tv'+str(tv)+'_'+str(i)+'.pkl')
+#                 # ss = []
+#                 # with open(save_file, 'wb') as f:
+#                 #     pickle.dump(samples, f)
+#                 # logger.info('Samples are saved in %s', save_file)
+#                 # if args.show_samples:
+#                 #     logger.info('Samples:')
+#                 #     for s in samples:
+#                 #         logger.info(sorted(str(i) for i in s))
+#                 print('d: ', d, 'TV  ', tv, lines[2])
+#     excel_file_path = 'outputs/color3/color3.xlsx'  # 指定输出文件路径
+#     nums.to_excel(excel_file_path, index=False)  # index=False 表示不写入行索引
+#     # with Timer() as t:
+#     #     problem = parse_input(args.input)
+#     # context = WFOMSContext(problem)
+#     # logger.info('Parse input: %ss', t)
+#     #
+#     # with Timer() as total_t:
+#     #     with Timer() as t:
+#     #         sampler = Sampler(context)
+#     #     logger.info('elapsed time for initializing sampler: %s', t.elapsed)
+#     #     samples = sampler.sample(args.n_samples)
+#     #     logger.info('total time for sampling: %s', total_t.elapsed)
+#     # save_file = os.path.join(args.output_dir, 'samples.pkl')
+#     # with open(save_file, 'wb') as f:
+#     #     pickle.dump(samples, f)
+#     # logger.info('Samples are saved in %s', save_file)
+#     # if args.show_samples:
+#     #     logger.info('Samples:')
+#     #     for s in samples:
+#     #         logger.info(sorted(str(i) for i in s))

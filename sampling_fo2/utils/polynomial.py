@@ -64,7 +64,7 @@ def _choices_int_weights(population: Iterable, weights: Iterable[int], k=1):
     cum_weights = list(accumulate(weights))
     total = cum_weights[-1]
     hi = n - 1
-    return [population[bisect_left(cum_weights, random.randint(1, total), 0, hi)]
+    return [population[bisect_left(cum_weights, random.randint(1, int(total)), 0, hi)]
             for _ in repeat(None, k)]
 
 
