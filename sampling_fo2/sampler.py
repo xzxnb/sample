@@ -491,7 +491,7 @@ if __name__ == '__main__':
 
     # data_list = ['data1/k_color1_domain10.xlsx', 'data1/k_color1_domain15.xlsx', 'data1/k_color1_domain20.xlsx']
     # 注意根据文件修改循环中d和文件命名
-    data_list = ['data1/color1_domain20_max1.xlsx']
+    data_list = ['data1/color1_domain20_TV.xlsx']
     num = {
             'domain': [],
             'tv': [],
@@ -506,13 +506,15 @@ if __name__ == '__main__':
     for d in range(1):
         file_path = data_list[d]
         df = pd.read_excel(file_path)
-        for tv in np.arange(0, 1.1, 0.1):
+        df = df[(df.iloc[:, 0] > 1) & (df.iloc[:, 1] > 1)]  # 筛选大于1权重
+        # for tv in np.arange(0, 1.1, 0.1):
+        for tv in [0.5, 1]:
             stv = str(tv)
             print(str(tv))
             target_value = tv
             closest_row = (df.iloc[:, 2] - target_value).abs().idxmin()
-            weight1 = df.iloc[closest_row, 0]
-            weight2 = df.iloc[closest_row, 1]
+            weight1 = df.loc[closest_row, 'w1']
+            weight2 = df.loc[closest_row, 'w2']
             weight = [weight1, weight2]
             for i in range(2):
                 with open(args.input, 'r', encoding='utf-8') as file:
@@ -550,7 +552,7 @@ if __name__ == '__main__':
                     for s in samples:
                         logger.info(sorted(str(i) for i in s))
                 print('d: ', d, 'TV  ', tv, lines[6])
-    excel_file_path = 'outputs/color1/num100k_mln/domain20_max1/color1_domain20_max1.xlsx'  # 指定输出文件路径
+    excel_file_path = 'outputs/color1/num100k_mln/domain20_min1/color1_domain20_min1.xlsx'  # 指定输出文件路径
     nums.to_excel(excel_file_path, index=False)  # index=False 表示不写入行索引
 
 # if __name__ == '__main__':
